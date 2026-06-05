@@ -23,7 +23,7 @@ typedef enum {
 } arr_error;
 
 /* Each Arr Error to string */
-static const char *arr_error_to_string(arr_error error) {
+static inline const char *arr_error_to_string(arr_error error) {
   switch (error) {
   case ARR_SUCCESS:
     return "ARR_SUCCESS";
@@ -71,308 +71,311 @@ static const char *arr_error_to_string(arr_error error) {
 
     Array(int, get) = intArray_get
 
-    (Don't use Array(int, get), use intArray_get, its better for auto completions)
+    (Don't use Array(int, get), use intArray_get, its better for auto
+   completions)
 */
 #define ArrayMethod(type, method_name) type##Array_##method_name
 
-#define DeclArray(type)                                                                    \
-  typedef struct {                                                                         \
-    type *data;                                                                            \
-    size_t count;                                                                          \
-    size_t capacity;                                                                       \
-  } Array(type);                                                                           \
-                                                                                           \
-  /*                                                                                       \
-    Array Initialization                                                                   \
-    ---                                                                                    \
-    Initializes an array like this:                                                        \
-    Array(int) my_array = {0};                                                             \
-    intArray_init(&my_array);                                                              \
-    ---                                                                                    \
-    Returns ARR_NOT_EMPTY if array data is not NULL                                        \
-    (Can happen if you don't initialize to {0})                                            \
-    This is to prevent memory leaks for double initialization                              \
-                                                                                           \
-    Returns ARR_OUT_OF_MEMORY if necessary memory allocation for INIT_CAPACITY             \
-    was not able to be secured.                                                            \
-                                                                                           \
-    Returns ARR_SUCCESS otherwise                                                          \
-  */                                                                                       \
-  static inline arr_error ArrayMethod(type, init)(Array(type) * self) {                    \
-    /* Protection against double init (which causes a memory leak) */                      \
-    if (self->data != NULL)                                                                \
-      return ARR_NOT_EMPTY;                                                                \
-                                                                                           \
-    /* Allocate necessary data for initial array capacity */                               \
-    type *data = (type *)malloc(INIT_CAPACITY * sizeof(type));                             \
-    /* Check for succesful allocation */                                                   \
-    if (data == NULL)                                                                      \
-      return ARR_OUT_OF_MEMORY;                                                            \
-                                                                                           \
-    /* Set all initial values */                                                           \
-    self->capacity = INIT_CAPACITY;                                                        \
-    self->data = data;                                                                     \
-    self->count = 0;                                                                       \
-                                                                                           \
-    return ARR_SUCCESS;                                                                    \
-  }                                                                                        \
-                                                                                           \
-  /*                                                                                       \
-    Array Push                                                                             \
-    ---                                                                                    \
-    Pushes an object to an array                                                           \
-    Array(int) my_array = {0};                                                             \
-    if(intArray_init(&my_array) != ARR_SUCCESS) ...                                        \
-                                                                                           \
-    intArray_push(&my_array, 5); // Pushes to array                                        \
-                                                                                           \
-    Array push can be used with a freed array (with array_free)                            \
-    to reinitialize it.                                                                    \
-    ---                                                                                    \
-    Returns ARR_OUT_OF_MEMORY if necessary memory allocation for capacity                  \
-    growth was not able to be secured. or if there was a capacity overflow.                \
-    (Calculated new capacity exceeds size_t MAX limit)                                     \
-                                                                                           \
-    Returns ARR_SUCCESS otherwise                                                          \
-  */                                                                                       \
-  static inline arr_error ArrayMethod(type, push)(Array(type) * self,                      \
-                                                  type val) {                              \
-    if (self->count >= self->capacity) {                                                   \
-      size_t new_capacity = GROW_CAPACITY(self->capacity);                                 \
-                                                                                           \
-      /* Overflow Checking */                                                              \
-      if (new_capacity < self->capacity)                                                   \
-        return ARR_OUT_OF_MEMORY;                                                          \
-                                                                                           \
-      if (new_capacity > SIZE_MAX / sizeof(type))                                          \
-        return ARR_OUT_OF_MEMORY;                                                          \
-                                                                                           \
-      type *new_data =                                                                     \
-          (type *)realloc(self->data, sizeof(type) * new_capacity);                        \
-                                                                                           \
-      if (new_data == NULL)                                                                \
-        return ARR_OUT_OF_MEMORY;                                                          \
-                                                                                           \
-      /* Reallocate */                                                                     \
-      self->capacity = new_capacity;                                                       \
-      self->data = new_data;                                                               \
-    }                                                                                      \
-                                                                                           \
-    self->data[self->count] = val;                                                         \
-    self->count++;                                                                         \
-    return ARR_SUCCESS;                                                                    \
-  }                                                                                        \
-                                                                                           \
-  /*                                                                                       \
-    Array Pop                                                                              \
-    ---                                                                                    \
-    Pops the last element in the array                                                     \
-                                                                                           \
-    Pushes an object to an array                                                           \
-    Array(int) my_array = {0};                                                             \
-    if(intArray_init(&my_array) != ARR_SUCCESS) ...                                        \
-                                                                                           \
-    intArray_push(&my_array, 5); // Pushes to array                                        \
-    intArray_push(&my_array, 10); // Pushes to array                                       \
-    intArray_pop(&my_array); // Pops the introduced '10'                                   \
-    ---                                                                                    \
-    Returns ARR_IS_EMPTY if called on an empty array.                                      \
-                                                                                           \
-    Returns ARR_SUCCESS otherwise.                                                         \
-  */                                                                                       \
-  static inline arr_error ArrayMethod(type, pop)(Array(type) * self) {                     \
-    if (self->count == 0)                                                                  \
-      return ARR_IS_EMPTY;                                                                 \
-    self->count--;                                                                         \
-    return ARR_SUCCESS;                                                                    \
-  }                                                                                        \
-                                                                                           \
-  /*                                                                                       \
-    Array Clear                                                                            \
-    ---                                                                                    \
-    Logical (not physical) clear of the array, mantaining stored capacity                  \
-    If looking for an alternative to free array memory, look at array_free                 \
-  */                                                                                       \
-  static inline void ArrayMethod(type, clear)(Array(type) * self) {                        \
-    self->count = 0;                                                                       \
-  }                                                                                        \
-                                                                                           \
-  /*                                                                                       \
-    Array ForEach                                                                          \
-    ---                                                                                    \
-    Utility to apply an operation throughout the entire array.                             \
-    Example:                                                                               \
-    void double_number(int* val) { *val = *val * 2; }                                      \
-    ...                                                                                    \
-    intArray_forEach(&my_array, double_number); // Doubles each number in a                \
-    given array                                                                            \
-  */                                                                                       \
-  static inline void ArrayMethod(type, forEach)(Array(type) * self,                        \
-                                                void (*f)(type *)) {                       \
-    for (size_t i = 0; i < self->count; i++) {                                             \
-      f((self->data) + i);                                                                 \
-    }                                                                                      \
-  }                                                                                        \
-  /*                                                                                       \
-    Array ForEachIndexed                                                                   \
-    ---                                                                                    \
-    Same as ForEach but the function pointer also receives the index of the                \
-    current object                                                                         \
-                                                                                           \
-  */                                                                                       \
-  static inline void ArrayMethod(type, forEachIndexed)(                                    \
-      Array(type) * self, void (*f)(type *, size_t)) {                                     \
-    for (size_t i = 0; i < self->count; i++) {                                             \
-      f((self->data) + i, i);                                                              \
-    }                                                                                      \
-  }                                                                                        \
-                                                                                           \
-  /*                                                                                       \
-    Array Print                                                                            \
-    ---                                                                                    \
-    Receives a print function for easy printing                                            \
-  */                                                                                       \
-  static inline void ArrayMethod(type, print)(Array(type) * self,                          \
-                                              void (*f)(type)) {                           \
-    printf("[");                                                                           \
-    for (size_t i = 0; i < self->count; i++) {                                             \
-      if (i != 0)                                                                          \
-        printf(", ");                                                                      \
-      f(self->data[i]);                                                                    \
-    }                                                                                      \
-    printf("]");                                                                           \
-  }                                                                                        \
-                                                                                           \
-  /*                                                                                       \
-    Array Exists                                                                           \
-    ---                                                                                    \
-    Check if the index is not out of bounds on the current array                           \
-    ---                                                                                    \
-    Returns ARR_OUT_OF_BOUNDS if the provided index doesn't exist                          \
-                                                                                           \
-    Returns ARR_SUCCESS otherwise                                                          \
-  */                                                                                       \
-  static inline arr_error ArrayMethod(type, exists)(Array(type) * self,                    \
-                                                    size_t index) {                        \
-    if (index >= self->count)                                                              \
-      return ARR_OUT_OF_BOUNDS;                                                            \
-    return ARR_SUCCESS;                                                                    \
-  }                                                                                        \
-                                                                                           \
-  /*                                                                                       \
-    Array Get                                                                              \
-    ---                                                                                    \
-    Gets an element from the array (with bounds-checking)                                  \
-    ---                                                                                    \
-    Returns ARR_OUT_OF_BOUNDS if the provided index doesn't exist                          \
-                                                                                           \
-    Returns ARR_INVALID_PARAM if out is NULL                                               \
-                                                                                           \
-    Returns ARR_SUCCESS otherwise (and fills *out with the obtained value)                 \
-  */                                                                                       \
-  static inline arr_error ArrayMethod(type, get)(Array(type) * self,                       \
-                                                 size_t index, type *out) {                \
-    if (out == NULL)                                                                       \
-      return ARR_INVALID_PARAM;                                                            \
-    arr_error exists = ArrayMethod(type, exists)(self, index);                             \
-    if (exists == ARR_SUCCESS)                                                             \
-      *out = self->data[index];                                                            \
-    return exists;                                                                         \
-  }                                                                                        \
-                                                                                           \
-  /*                                                                                       \
-    Array Set                                                                              \
-    ---                                                                                    \
-    Sets an element from the array (with bounds-checking)                                  \
-    ---                                                                                    \
-    Returns ARR_OUT_OF_BOUNDS if the provided index doesn't exist                          \
-                                                                                           \
-    Returns ARR_SUCCESS otherwise                                                          \
-  */                                                                                       \
-  static inline arr_error ArrayMethod(type, set)(Array(type) * self,                       \
-                                                 size_t index, type val) {                 \
-    arr_error exists = ArrayMethod(type, exists)(self, index);                             \
-    if (exists == ARR_SUCCESS)                                                             \
-      self->data[index] = val;                                                             \
-    return exists;                                                                         \
-  }                                                                                        \
-                                                                                           \
-  /*                                                                                       \
-    Array Get (unsafe version)                                                             \
-    ---                                                                                    \
-    Gets an element from the array (without bounds-checking)                               \
-    ---                                                                                    \
-    This function is UNSAFE as it doesn't perform bounds checking.                         \
-    Exists to be used in performance critical scenarios (or if you're lazy to              \
-    check if an error was thrown). Returns the obtained value.                             \
-  */                                                                                       \
-  static inline type ArrayMethod(type, get_unsafe)(Array(type) * self,                     \
-                                                   size_t index) {                         \
-    return self->data[index];                                                              \
-  }                                                                                        \
-                                                                                           \
-  /*                                                                                       \
-    Array Set (unsafe version)                                                             \
-    ---                                                                                    \
-    Sets an element from the array (without bounds-checking)                               \
-    ---                                                                                    \
-    This function is UNSAFE as it doesn't perform bounds checking.                         \
-    Exists to be used in performance critical scenarios.                                   \
-  */                                                                                       \
-  static inline void ArrayMethod(type, set_unsafe)(Array(type) * self,                     \
-                                                   size_t index, type val) {               \
-    self->data[index] = val;                                                               \
-  }                                                                                        \
-                                                                                           \
-  /*                                                                                       \
-    Array Size                                                                             \
-    ---                                                                                    \
-    Returns the size of the array                                                          \
-  */                                                                                       \
-  static inline size_t ArrayMethod(type, size)(Array(type) * self) {                       \
-    return self->count;                                                                    \
-  }                                                                                        \
-                                                                                           \
-  /*                                                                                       \
-    Array Capacity                                                                         \
-    ---                                                                                    \
-    Returns the capacity of the array                                                      \
-  */                                                                                       \
-  static inline size_t ArrayMethod(type, capacity)(Array(type) * self) {                   \
-    return self->capacity;                                                                 \
-  }                                                                                        \
-                                                                                           \
-  /*                                                                                       \
-    Array IsEmpty                                                                          \
-    ---                                                                                    \
-    Returns a boolean whether the array is empty or not. (count == 0)                      \
-  */                                                                                       \
-  static inline bool ArrayMethod(type, isEmpty)(Array(type) * self) {                      \
-    return self->count == 0;                                                               \
-  }                                                                                        \
-                                                                                           \
-  /*                                                                                       \
-    Array Free                                                                             \
-    ---                                                                                    \
-    Frees an array's data from memory completely (physical deletion unlike                 \
-    array_clear), also sets count and capacity to 0. Any freed array can be                \
-    reinitialized with array_init                                                          \
-    ---                                                                                    \
-    Returns ARR_IS_EMPTY if the given array's data is NULL. (will still set                \
-    count and capacity to 0)                                                               \
-                                                                                           \
-    Returns ARR_SUCCESS otherwise                                                          \
-  */                                                                                       \
-  static inline arr_error ArrayMethod(type, free)(Array(type) * self) {                    \
-    self->capacity = 0;                                                                    \
-    self->count = 0;                                                                       \
-                                                                                           \
-    if (self->data == NULL)                                                                \
-      return ARR_IS_EMPTY;                                                                 \
-    free(self->data);                                                                      \
-    self->data = NULL;                                                                     \
-    return ARR_SUCCESS;                                                                    \
-  }
+#define DeclArray(type)                                                                      \
+  typedef struct {                                                                           \
+    type *data;                                                                              \
+    size_t count;                                                                            \
+    size_t capacity;                                                                         \
+  } Array(type);                                                                             \
+                                                                                             \
+  /*                                                                                         \
+    Array Initialization                                                                     \
+    ---                                                                                      \
+    Initializes an array like this:                                                          \
+    Array(int) my_array = {0};                                                               \
+    intArray_init(&my_array);                                                                \
+    ---                                                                                      \
+    Returns ARR_NOT_EMPTY if array data is not NULL                                          \
+    (Can happen if you don't initialize to {0})                                              \
+    This is to prevent memory leaks for double initialization                                \
+                                                                                           \ \
+    Returns ARR_OUT_OF_MEMORY if necessary memory allocation for INIT_CAPACITY               \
+    was not able to be secured.                                                              \
+                                                                                           \ \
+    Returns ARR_SUCCESS otherwise                                                            \
+  */                                                                                         \
+  static inline arr_error ArrayMethod(type, init)(Array(type) * self) {                      \
+    /* Protection against double init (which causes a memory leak) */                        \
+    if (self->data != NULL)                                                                  \
+      return ARR_NOT_EMPTY;                                                                  \
+                                                                                             \
+    /* Allocate necessary data for initial array capacity */                                 \
+    type *data = (type *)malloc(INIT_CAPACITY * sizeof(type));                               \
+    /* Check for succesful allocation */                                                     \
+    if (data == NULL)                                                                        \
+      return ARR_OUT_OF_MEMORY;                                                              \
+                                                                                             \
+    /* Set all initial values */                                                             \
+    self->capacity = INIT_CAPACITY;                                                          \
+    self->data = data;                                                                       \
+    self->count = 0;                                                                         \
+                                                                                             \
+    return ARR_SUCCESS;                                                                      \
+  }                                                                                          \
+                                                                                             \
+  /*                                                                                         \
+    Array Push                                                                               \
+    ---                                                                                      \
+    Pushes an object to an array                                                             \
+    Array(int) my_array = {0};                                                               \
+    if(intArray_init(&my_array) != ARR_SUCCESS) ...                                          \
+                                                                                           \ \
+    intArray_push(&my_array, 5); // Pushes to array                                          \
+                                                                                           \ \
+    Array push can be used with a freed array (with array_free)                              \
+    to reinitialize it.                                                                      \
+    ---                                                                                      \
+    Returns ARR_OUT_OF_MEMORY if necessary memory allocation for capacity                    \
+    growth was not able to be secured. or if there was a capacity overflow.                  \
+    (Calculated new capacity exceeds size_t MAX limit)                                       \
+                                                                                           \ \
+    Returns ARR_SUCCESS otherwise                                                            \
+  */                                                                                         \
+  static inline arr_error ArrayMethod(type, push)(Array(type) * self,                        \
+                                                  type val) {                                \
+    if (self->count >= self->capacity) {                                                     \
+      size_t new_capacity = GROW_CAPACITY(self->capacity);                                   \
+                                                                                             \
+      /* Overflow Checking */                                                                \
+      if (new_capacity < self->capacity)                                                     \
+        return ARR_OUT_OF_MEMORY;                                                            \
+                                                                                             \
+      if (new_capacity > SIZE_MAX / sizeof(type))                                            \
+        return ARR_OUT_OF_MEMORY;                                                            \
+                                                                                             \
+      type *new_data =                                                                       \
+          (type *)realloc(self->data, sizeof(type) * new_capacity);                          \
+                                                                                             \
+      if (new_data == NULL)                                                                  \
+        return ARR_OUT_OF_MEMORY;                                                            \
+                                                                                             \
+      /* Reallocate */                                                                       \
+      self->capacity = new_capacity;                                                         \
+      self->data = new_data;                                                                 \
+    }                                                                                        \
+                                                                                             \
+    self->data[self->count] = val;                                                           \
+    self->count++;                                                                           \
+    return ARR_SUCCESS;                                                                      \
+  }                                                                                          \
+                                                                                             \
+  /*                                                                                         \
+    Array Pop                                                                                \
+    ---                                                                                      \
+    Pops the last element in the array                                                       \
+                                                                                           \ \
+    Pushes an object to an array                                                             \
+    Array(int) my_array = {0};                                                               \
+    if(intArray_init(&my_array) != ARR_SUCCESS) ...                                          \
+                                                                                           \ \
+    intArray_push(&my_array, 5); // Pushes to array                                          \
+    intArray_push(&my_array, 10); // Pushes to array                                         \
+    intArray_pop(&my_array); // Pops the introduced '10'                                     \
+    ---                                                                                      \
+    Returns ARR_IS_EMPTY if called on an empty array.                                        \
+                                                                                           \ \
+    Returns ARR_SUCCESS otherwise.                                                           \
+  */                                                                                         \
+  static inline arr_error ArrayMethod(type, pop)(Array(type) * self) {                       \
+    if (self->count == 0)                                                                    \
+      return ARR_IS_EMPTY;                                                                   \
+    self->count--;                                                                           \
+    return ARR_SUCCESS;                                                                      \
+  }                                                                                          \
+                                                                                             \
+  /*                                                                                         \
+    Array Clear                                                                              \
+    ---                                                                                      \
+    Logical (not physical) clear of the array, mantaining stored capacity                    \
+    If looking for an alternative to free array memory, look at array_free                   \
+  */                                                                                         \
+  static inline void ArrayMethod(type, clear)(Array(type) * self) {                          \
+    self->count = 0;                                                                         \
+  }                                                                                          \
+                                                                                             \
+  /*                                                                                         \
+    Array ForEach                                                                            \
+    ---                                                                                      \
+    Utility to apply an operation throughout the entire array.                               \
+    Example:                                                                                 \
+    void double_number(int* val) { *val = *val * 2; }                                        \
+    ...                                                                                      \
+    intArray_forEach(&my_array, double_number); // Doubles each number in a                  \
+    given array                                                                              \
+  */                                                                                         \
+  static inline void ArrayMethod(type, forEach)(Array(type) * self,                          \
+                                                void (*f)(type *)) {                         \
+    for (size_t i = 0; i < self->count; i++) {                                               \
+      f((self->data) + i);                                                                   \
+    }                                                                                        \
+  }                                                                                          \
+  /*                                                                                         \
+    Array ForEachIndexed                                                                     \
+    ---                                                                                      \
+    Same as ForEach but the function pointer also receives the index of the                  \
+    current object                                                                           \
+                                                                                           \ \
+  */                                                                                         \
+  static inline void ArrayMethod(type, forEachIndexed)(                                      \
+      Array(type) * self, void (*f)(type *, size_t)) {                                       \
+    for (size_t i = 0; i < self->count; i++) {                                               \
+      f((self->data) + i, i);                                                                \
+    }                                                                                        \
+  }                                                                                          \
+                                                                                             \
+  /*                                                                                         \
+    Array Print                                                                              \
+    ---                                                                                      \
+    Receives a print function for easy printing                                              \
+  */                                                                                         \
+  static inline void ArrayMethod(type, print)(Array(type) * self,                            \
+                                              void (*f)(type)) {                             \
+    printf("[");                                                                             \
+    for (size_t i = 0; i < self->count; i++) {                                               \
+      if (i != 0)                                                                            \
+        printf(", ");                                                                        \
+      f(self->data[i]);                                                                      \
+    }                                                                                        \
+    printf("]");                                                                             \
+  }                                                                                          \
+                                                                                             \
+  /*                                                                                         \
+    Array Exists                                                                             \
+    ---                                                                                      \
+    Check if the index is not out of bounds on the current array                             \
+    ---                                                                                      \
+    Returns ARR_OUT_OF_BOUNDS if the provided index doesn't exist                            \
+                                                                                           \ \
+    Returns ARR_SUCCESS otherwise                                                            \
+  */                                                                                         \
+  static inline arr_error ArrayMethod(type, exists)(Array(type) * self,                      \
+                                                    size_t index) {                          \
+    if (index >= self->count)                                                                \
+      return ARR_OUT_OF_BOUNDS;                                                              \
+    return ARR_SUCCESS;                                                                      \
+  }                                                                                          \
+                                                                                             \
+  /*                                                                                         \
+    Array Get                                                                                \
+    ---                                                                                      \
+    Gets an element from the array (with bounds-checking)                                    \
+    ---                                                                                      \
+    Returns ARR_OUT_OF_BOUNDS if the provided index doesn't exist                            \
+                                                                                           \ \
+    Returns ARR_INVALID_PARAM if out is NULL                                                 \
+                                                                                           \ \
+    Returns ARR_SUCCESS otherwise (and fills *out with the obtained value)                   \
+  */                                                                                         \
+  static inline arr_error ArrayMethod(type, get)(Array(type) * self,                         \
+                                                 size_t index, type *out) {                  \
+    if (out == NULL)                                                                         \
+      return ARR_INVALID_PARAM;                                                              \
+    arr_error exists = ArrayMethod(type, exists)(self, index);                               \
+    if (exists == ARR_SUCCESS)                                                               \
+      *out = self->data[index];                                                              \
+    return exists;                                                                           \
+  }                                                                                          \
+                                                                                             \
+  /*                                                                                         \
+    Array Set                                                                                \
+    ---                                                                                      \
+    Sets an element from the array (with bounds-checking)                                    \
+    ---                                                                                      \
+    Returns ARR_OUT_OF_BOUNDS if the provided index doesn't exist                            \
+                                                                                           \ \
+    Returns ARR_SUCCESS otherwise                                                            \
+  */                                                                                         \
+  static inline arr_error ArrayMethod(type, set)(Array(type) * self,                         \
+                                                 size_t index, type val) {                   \
+    arr_error exists = ArrayMethod(type, exists)(self, index);                               \
+    if (exists == ARR_SUCCESS)                                                               \
+      self->data[index] = val;                                                               \
+    return exists;                                                                           \
+  }                                                                                          \
+                                                                                             \
+  /*                                                                                         \
+    Array Get (unsafe version)                                                               \
+    ---                                                                                      \
+    Gets an element from the array (without bounds-checking)                                 \
+    ---                                                                                      \
+    This function is UNSAFE as it doesn't perform bounds checking.                           \
+    Exists to be used in performance critical scenarios (or if you're lazy to                \
+    check if an error was thrown). Returns the obtained value.                               \
+  */                                                                                         \
+  static inline type ArrayMethod(type, get_unsafe)(Array(type) * self,                       \
+                                                   size_t index) {                           \
+    return self->data[index];                                                                \
+  }                                                                                          \
+                                                                                             \
+  /*                                                                                         \
+    Array Set (unsafe version)                                                               \
+    ---                                                                                      \
+    Sets an element from the array (without bounds-checking)                                 \
+    ---                                                                                      \
+    This function is UNSAFE as it doesn't perform bounds checking.                           \
+    Exists to be used in performance critical scenarios.                                     \
+  */                                                                                         \
+  static inline void ArrayMethod(type, set_unsafe)(Array(type) * self,                       \
+                                                   size_t index, type val) {                 \
+    self->data[index] = val;                                                                 \
+  }                                                                                          \
+                                                                                             \
+  /*                                                                                         \
+    Array Size                                                                               \
+    ---                                                                                      \
+    Returns the size of the array                                                            \
+  */                                                                                         \
+  static inline size_t ArrayMethod(type, size)(Array(type) * self) {                         \
+    return self->count;                                                                      \
+  }                                                                                          \
+                                                                                             \
+  /*                                                                                         \
+    Array Capacity                                                                           \
+    ---                                                                                      \
+    Returns the capacity of the array                                                        \
+  */                                                                                         \
+  static inline size_t ArrayMethod(type, capacity)(Array(type) * self) {                     \
+    return self->capacity;                                                                   \
+  }                                                                                          \
+                                                                                             \
+  /*                                                                                         \
+    Array IsEmpty                                                                            \
+    ---                                                                                      \
+    Returns a boolean whether the array is empty or not. (count == 0)                        \
+  */                                                                                         \
+  static inline bool ArrayMethod(type, isEmpty)(Array(type) * self) {                        \
+    return self->count == 0;                                                                 \
+  }                                                                                          \
+                                                                                             \
+  /*                                                                                         \
+    Array Free                                                                               \
+    ---                                                                                      \
+    Frees an array's data from memory completely (physical deletion unlike                   \
+    array_clear), also sets count and capacity to 0. Any freed array can be                  \
+    reinitialized with array_init                                                            \
+    ---                                                                                      \
+    Returns ARR_IS_EMPTY if the given array's data is NULL. (will still set                  \
+    count and capacity to 0)                                                                 \
+                                                                                           \ \
+    Returns ARR_SUCCESS otherwise                                                            \
+  */                                                                                         \
+  static inline arr_error ArrayMethod(type, free)(Array(type) * self) {                      \
+    self->capacity = 0;                                                                      \
+    self->count = 0;                                                                         \
+                                                                                             \
+    if (self->data == NULL)                                                                  \
+      return ARR_IS_EMPTY;                                                                   \
+    free(self->data);                                                                        \
+    self->data = NULL;                                                                       \
+    return ARR_SUCCESS;                                                                      \
+  }                                                                                          \
+  struct ForceSemicolon /* Here just to require semicolon at the end without a               \
+                           warning */
 
 #ifndef GENERIC_ARRAY_DISABLE_DEFAULTS
 /* Default commonly used array types */
