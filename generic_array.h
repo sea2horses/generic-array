@@ -176,10 +176,9 @@ static inline const char *arr_error_to_string(arr_error error) {
                                                                                            \ \
     Returns ARR_SUCCESS otherwise.                                                           \
   */                                                                                         \
-  static inline arr_error ArrayMethod(type, pop)(Array(type) * self) {                       \
+  static inline void ArrayMethod(type, pop)(Array(type) * self) {                       \
     assert(self->count > 0);                                                                 \
     self->count--;                                                                           \
-    return ARR_SUCCESS;                                                                      \
   }                                                                                          \
                                                                                              \
   /*                                                                                         \

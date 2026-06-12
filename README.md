@@ -123,11 +123,8 @@ if (intArray_isEmpty(&numbers)) {
 `pop` removes the last element logically by reducing `count`.
 
 ```c
-arr_error error = intArray_pop(&numbers);
-
-if (error == ARR_IS_EMPTY) {
-  printf("Cannot pop from an empty array\n");
-}
+// If the array isn't empty the program will panic!
+intArray_pop(&numbers);
 ```
 
 ## Clearing an Array
@@ -145,6 +142,7 @@ This is useful if you want to reuse the array without reallocating memory.
 `free` releases the allocated memory and resets the array.
 
 ```c
+// Double freeing will cause a panic!
 intArray_free(&numbers);
 ```
 
@@ -165,11 +163,11 @@ intArray_free(&numbers);
 The array print function receives a custom print callback.
 
 ```c
-void print_int(int value) {
-  printf("%d", value);
+void print_int(int value, FILE* stream) {
+  fprintf(stream, "%d", value);
 }
 
-intArray_print(&numbers, print_int);
+intArray_print(&numbers, print_int, stdout);
 ```
 
 Output example:
@@ -207,9 +205,9 @@ intArray_forEachIndexed(&numbers, add_index);
 By default, the header declares arrays for:
 
 ```c
-DeclArray(int);
-DeclArray(double);
-DeclArray(char);
+DefArray(int);
+DefArray(double);
+DefArray(char);
 ```
 
 So you can use:
@@ -268,7 +266,7 @@ PersonArray_free(&people);
 
 ## Important Limitation
 
-`DeclArray(type)` works best with single-token type names.
+`DefArray(type)` works best with single-token type names.
 
 This works:
 
@@ -315,7 +313,7 @@ If you do not want the default `int`, `double`, and `char` arrays, define:
 Then declare only the arrays you need:
 
 ```c
-DeclArray(float);
+DefArray(float);
 ```
 
 ## Error Codes
@@ -325,9 +323,7 @@ The array functions return `arr_error` values when something can fail.
 ```c
 typedef enum {
   ARR_SUCCESS = 0,
-  ARR_NOT_EMPTY,
   ARR_OUT_OF_MEMORY,
-  ARR_IS_EMPTY,
   ARR_OUT_OF_BOUNDS
 } arr_error;
 ```
@@ -337,9 +333,7 @@ Common meanings:
 | Error | Meaning |
 |---|---|
 | `ARR_SUCCESS` | Operation completed successfully |
-| `ARR_NOT_EMPTY` | `init` was called on an already initialized array |
 | `ARR_OUT_OF_MEMORY` | Allocation or reallocation failed |
-| `ARR_IS_EMPTY` | `pop` or `free` was called on an empty/freed array |
 | `ARR_OUT_OF_BOUNDS` | Invalid index access |
 
 ## Complete Minimal Example
@@ -393,7 +387,7 @@ gcc -std=c11 -Wall -Wextra -pedantic generic_array_test.c -o generic_array_test
 Expected output:
 
 ```text
-Tests run: 119 (as of 04/06/2026)
+Tests run: 119 (as of 011/06/2026)
 Tests failed: 0
 All tests passed.
 ```

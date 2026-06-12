@@ -115,9 +115,7 @@ int main(void) {
   intArray_print(&numbers, print_int, stdout);
   printf("\n");
 
-  error = intArray_pop(&numbers);
-  printf("pop: %s\n", arr_error_to_string(error));
-
+  intArray_pop(&numbers);
   printf("after pop = ");
   intArray_print(&numbers, print_int, stdout);
   printf("\n");
