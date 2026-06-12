@@ -1,12 +1,13 @@
 #include <stdio.h>
 
 /* Redefinition of assert for demonstration purposes */
-#define assert(expr) \
-  do { \
-    if(!(expr)) { \
-      printf("(assert) CRASH EXPECTED! Expression %s not satisfied.\n", #expr); \
-    } \
-  } while(0)
+#define assert(expr)                                                           \
+  do {                                                                         \
+    if (!(expr)) {                                                             \
+      printf("(assert) CRASH EXPECTED! Expression %s not satisfied.\n",        \
+             #expr);                                                           \
+    }                                                                          \
+  } while (0)
 
 #include "generic_array.h"
 
@@ -28,33 +29,25 @@ typedef struct {
 /* Generate a PersonArray type and PersonArray_* functions. */
 DefArray(Person);
 
-static void print_int(int value, FILE* stream) {
-  fprintf(stream, "%d", value);
-}
+static void print_int(int value, FILE *stream) { fprintf(stream, "%d", value); }
 
-static void print_double(double value, FILE* stream) {
+static void print_double(double value, FILE *stream) {
   fprintf(stream, "%.2f", value);
 }
 
-static void print_char(char value, FILE* stream) {
+static void print_char(char value, FILE *stream) {
   fprintf(stream, "'%c'", value);
 }
 
-static void print_person(Person person, FILE* stream) {
+static void print_person(Person person, FILE *stream) {
   fprintf(stream, "{ name: \"%s\", age: %d }", person.name, person.age);
 }
 
-static void double_int(int *value) {
-  *value *= 2;
-}
+static void double_int(int *value) { *value *= 2; }
 
-static void add_index_to_int(int *value, size_t index) {
-  *value += (int)index;
-}
+static void add_index_to_int(int *value, size_t index) { *value += (int)index; }
 
-static void halve_double(double *value) {
-  *value /= 2.0;
-}
+static void halve_double(double *value) { *value /= 2.0; }
 
 static void uppercase_char(char *value) {
   if (*value >= 'a' && *value <= 'z') {
@@ -62,9 +55,7 @@ static void uppercase_char(char *value) {
   }
 }
 
-static void birthday(Person *person) {
-  person->age += 1;
-}
+static void birthday(Person *person) { person->age += 1; }
 
 static void print_section(const char *title) {
   printf("\n=== %s ===\n", title);
@@ -97,7 +88,8 @@ int main(void) {
 
   int value = 0;
   error = intArray_get(&numbers, 5, &value);
-  printf("safe get index 5: %s, value = %d\n", arr_error_to_string(error), value);
+  printf("safe get index 5: %s, value = %d\n", arr_error_to_string(error),
+         value);
 
   error = intArray_set(&numbers, 5, 999);
   printf("safe set index 5 to 999: %s\n", arr_error_to_string(error));
@@ -106,7 +98,8 @@ int main(void) {
   printf("exists index 1000: %s\n", arr_error_to_string(error));
 
   intArray_set_unsafe(&numbers, 0, -10);
-  printf("unsafe get index 0 after unsafe set: %d\n", intArray_get_unsafe(&numbers, 0));
+  printf("unsafe get index 0 after unsafe set: %d\n",
+         intArray_get_unsafe(&numbers, 0));
 
   printf("after set operations = ");
   intArray_print(&numbers, print_int, stdout);
@@ -131,9 +124,7 @@ int main(void) {
 
   intArray_clear(&numbers);
   printf("after clear size: %zu, capacity still: %zu\n",
-         intArray_size(&numbers),
-         intArray_capacity(&numbers));
-
+         intArray_size(&numbers), intArray_capacity(&numbers));
 
   printf("pop on empty array: ");
   intArray_pop(&numbers);

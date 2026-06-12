@@ -72,7 +72,7 @@ static inline const char *arr_error_to_string(arr_error error) {
 */
 #define ArrayMethod(type, method_name) type##Array_##method_name
 
-#define DefArray(type)                                                                      \
+#define DefArray(type)                                                                       \
   typedef struct {                                                                           \
     type *data;                                                                              \
     size_t count;                                                                            \
@@ -97,7 +97,7 @@ static inline const char *arr_error_to_string(arr_error error) {
   */                                                                                         \
   static inline arr_error ArrayMethod(type, init)(Array(type) * self) {                      \
     /* Protection against double init (which causes a memory leak) */                        \
-    assert(self->data == NULL);                                                               \
+    assert(self->data == NULL);                                                              \
                                                                                              \
     /* Allocate necessary data for initial array capacity */                                 \
     type *data = (type *)malloc(INIT_CAPACITY * sizeof(type));                               \
@@ -177,7 +177,7 @@ static inline const char *arr_error_to_string(arr_error error) {
     Returns ARR_SUCCESS otherwise.                                                           \
   */                                                                                         \
   static inline arr_error ArrayMethod(type, pop)(Array(type) * self) {                       \
-    assert(self->count > 0);                                                                  \
+    assert(self->count > 0);                                                                 \
     self->count--;                                                                           \
     return ARR_SUCCESS;                                                                      \
   }                                                                                          \
@@ -227,15 +227,15 @@ static inline const char *arr_error_to_string(arr_error error) {
     ---                                                                                      \
     Receives a print function for easy printing                                              \
   */                                                                                         \
-  static inline void ArrayMethod(type, print)(Array(type) * self,                            \
-                                              void (*f)(type, FILE*), FILE* stream) {        \
-    fputs("[", stream);                                                                             \
+  static inline void ArrayMethod(type, print)(                                               \
+      Array(type) * self, void (*f)(type, FILE *), FILE *stream) {                           \
+    fputs("[", stream);                                                                      \
     for (size_t i = 0; i < self->count; i++) {                                               \
       if (i != 0)                                                                            \
-        fputs(",", stream);                                                                        \
-      f(self->data[i], stream);                                                                      \
+        fputs(",", stream);                                                                  \
+      f(self->data[i], stream);                                                              \
     }                                                                                        \
-    fputs("]", stream);                                                                             \
+    fputs("]", stream);                                                                      \
   }                                                                                          \
                                                                                              \
   /*                                                                                         \
@@ -266,7 +266,7 @@ static inline const char *arr_error_to_string(arr_error error) {
   */                                                                                         \
   static inline arr_error ArrayMethod(type, get)(Array(type) * self,                         \
                                                  size_t index, type *out) {                  \
-    assert(out != NULL);                                                                      \
+    assert(out != NULL);                                                                     \
     arr_error exists = ArrayMethod(type, exists)(self, index);                               \
     if (exists == ARR_SUCCESS)                                                               \
       *out = self->data[index];                                                              \
@@ -351,7 +351,7 @@ static inline const char *arr_error_to_string(arr_error error) {
     array_clear), also sets count and capacity to 0. Any freed array can be                  \
     reinitialized with array_init                                                            \
     ---                                                                                      \
-    panics if the given array's data is NULL.                                                                  \
+    panics if the given array's data is NULL.                                                \
                                                                                            \ \
     Returns ARR_SUCCESS otherwise                                                            \
   */                                                                                         \

@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
 /*
   Test file for generic_array.h
 
@@ -19,15 +18,14 @@ typedef struct {
   int y;
 } Point;
 
-
 static int tests_run = 0;
 static int tests_failed = 0;
 
 static int crashes = 0;
 
-#define assert(expression) \
-  if (!(expression)) { \
-    crashes++; \
+#define assert(expression)                                                     \
+  if (!(expression)) {                                                         \
+    crashes++;                                                                 \
   }
 
 #include "../generic_array.h"
@@ -64,16 +62,16 @@ DefArray(Point);
     }                                                                          \
   } while (0)
 
-#define EXPECT_CRASH(expr) \
-  do { \
-    tests_run++; \
-    int o_crashes = crashes; \
-    (expr); \
-    if (crashes <= o_crashes) { \
-      tests_failed++; \
-      printf("FAIL: %s:%d: expected crash: %s", __FILE__, __LINE__, #expr); \
-    } \
-  } while(0)
+#define EXPECT_CRASH(expr)                                                     \
+  do {                                                                         \
+    tests_run++;                                                               \
+    int o_crashes = crashes;                                                   \
+    (expr);                                                                    \
+    if (crashes <= o_crashes) {                                                \
+      tests_failed++;                                                          \
+      printf("FAIL: %s:%d: expected crash: %s", __FILE__, __LINE__, #expr);    \
+    }                                                                          \
+  } while (0)
 
 #define EXPECT_SIZE(actual, expected)                                          \
   do {                                                                         \
