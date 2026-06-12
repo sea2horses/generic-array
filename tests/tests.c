@@ -1,4 +1,3 @@
-#include "../generic_array.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,10 +19,20 @@ typedef struct {
   int y;
 } Point;
 
-DeclArray(Point);
 
 static int tests_run = 0;
 static int tests_failed = 0;
+
+static int crashes = 0;
+
+#define assert(expression) \
+  if (!(expression)) { \
+    crashes++; \
+  }
+
+#include "../generic_array.h"
+
+DefArray(Point);
 
 #define EXPECT_TRUE(expr)                                                      \
   do {                                                                         \
@@ -54,6 +63,17 @@ static int tests_failed = 0;
              expected_value, actual_value);                                    \
     }                                                                          \
   } while (0)
+
+#define EXPECT_CRASH(expr) \
+  do { \
+    tests_run++; \
+    int o_crashes = crashes; \
+    (expr); \
+    if (crashes <= o_crashes) { \
+      tests_failed++; \
+      printf("FAIL: %s:%d: expected crash: %s", __FILE__, __LINE__, #expr); \
+    } \
+  } while(0)
 
 #define EXPECT_SIZE(actual, expected)                                          \
   do {                                                                         \
@@ -117,7 +137,7 @@ static void test_int_array_lifecycle(void) {
   EXPECT_SIZE(intArray_size(&array), 0);
   EXPECT_SIZE(intArray_capacity(&array), INIT_CAPACITY);
 
-  EXPECT_ERR(intArray_init(&array), ARR_NOT_EMPTY);
+  EXPECT_CRASH(intArray_init(&array));
 
   for (int i = 0; i < 40; i++) {
     EXPECT_ERR(intArray_push(&array, i), ARR_SUCCESS);
@@ -162,14 +182,14 @@ static void test_int_array_lifecycle(void) {
   EXPECT_TRUE(intArray_isEmpty(&array));
   EXPECT_TRUE(intArray_capacity(&array) >= 40);
 
-  EXPECT_ERR(intArray_pop(&array), ARR_IS_EMPTY);
+  EXPECT_CRASH(intArray_pop(&array));
 
   EXPECT_ERR(intArray_free(&array), ARR_SUCCESS);
   EXPECT_SIZE(intArray_size(&array), 0);
   EXPECT_SIZE(intArray_capacity(&array), 0);
   EXPECT_TRUE(array.data == NULL);
 
-  EXPECT_ERR(intArray_free(&array), ARR_IS_EMPTY);
+  EXPECT_CRASH(intArray_free(&array));
 }
 
 static void test_push_after_free(void) {

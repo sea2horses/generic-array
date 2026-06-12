@@ -1,4 +1,13 @@
 #include <stdio.h>
+
+/* Redefinition of assert for demonstration purposes */
+#define assert(expr) \
+  do { \
+    if(!(expr)) { \
+      printf("(assert) CRASH EXPECTED! Expression %s not satisfied.\n", #expr); \
+    } \
+  } while(0)
+
 #include "generic_array.h"
 
 /*
@@ -17,22 +26,22 @@ typedef struct {
 } Person;
 
 /* Generate a PersonArray type and PersonArray_* functions. */
-DeclArray(Person);
+DefArray(Person);
 
-static void print_int(int value) {
-  printf("%d", value);
+static void print_int(int value, FILE* stream) {
+  fprintf(stream, "%d", value);
 }
 
-static void print_double(double value) {
-  printf("%.2f", value);
+static void print_double(double value, FILE* stream) {
+  fprintf(stream, "%.2f", value);
 }
 
-static void print_char(char value) {
-  printf("'%c'", value);
+static void print_char(char value, FILE* stream) {
+  fprintf(stream, "'%c'", value);
 }
 
-static void print_person(Person person) {
-  printf("{ name: \"%s\", age: %d }", person.name, person.age);
+static void print_person(Person person, FILE* stream) {
+  fprintf(stream, "{ name: \"%s\", age: %d }", person.name, person.age);
 }
 
 static void double_int(int *value) {
@@ -79,7 +88,7 @@ int main(void) {
   }
 
   printf("numbers = ");
-  intArray_print(&numbers, print_int);
+  intArray_print(&numbers, print_int, stdout);
   printf("\n");
 
   printf("size: %zu\n", intArray_size(&numbers));
@@ -100,24 +109,24 @@ int main(void) {
   printf("unsafe get index 0 after unsafe set: %d\n", intArray_get_unsafe(&numbers, 0));
 
   printf("after set operations = ");
-  intArray_print(&numbers, print_int);
+  intArray_print(&numbers, print_int, stdout);
   printf("\n");
 
   intArray_forEach(&numbers, double_int);
   printf("after forEach double_int = ");
-  intArray_print(&numbers, print_int);
+  intArray_print(&numbers, print_int, stdout);
   printf("\n");
 
   intArray_forEachIndexed(&numbers, add_index_to_int);
   printf("after forEachIndexed add_index_to_int = ");
-  intArray_print(&numbers, print_int);
+  intArray_print(&numbers, print_int, stdout);
   printf("\n");
 
   error = intArray_pop(&numbers);
   printf("pop: %s\n", arr_error_to_string(error));
 
   printf("after pop = ");
-  intArray_print(&numbers, print_int);
+  intArray_print(&numbers, print_int, stdout);
   printf("\n");
 
   intArray_clear(&numbers);
@@ -125,14 +134,15 @@ int main(void) {
          intArray_size(&numbers),
          intArray_capacity(&numbers));
 
-  error = intArray_pop(&numbers);
-  printf("pop on empty array: %s\n", arr_error_to_string(error));
+
+  printf("pop on empty array: ");
+  intArray_pop(&numbers);
 
   error = intArray_free(&numbers);
   printf("free: %s\n", arr_error_to_string(error));
 
+  printf("free again: ");
   error = intArray_free(&numbers);
-  printf("free again: %s\n", arr_error_to_string(error));
 
   print_section("push after free demo");
 
@@ -141,7 +151,7 @@ int main(void) {
 
   if (error == ARR_SUCCESS) {
     printf("numbers = ");
-    intArray_print(&numbers, print_int);
+    intArray_print(&numbers, print_int, stdout);
     printf("\n");
   }
 
@@ -157,13 +167,13 @@ int main(void) {
   doubleArray_push(&decimals, 1.41421);
 
   printf("decimals = ");
-  doubleArray_print(&decimals, print_double);
+  doubleArray_print(&decimals, print_double, stdout);
   printf("\n");
 
   doubleArray_forEach(&decimals, halve_double);
 
   printf("after halve_double = ");
-  doubleArray_print(&decimals, print_double);
+  doubleArray_print(&decimals, print_double, stdout);
   printf("\n");
 
   doubleArray_free(&decimals);
@@ -178,13 +188,13 @@ int main(void) {
   charArray_push(&letters, 'c');
 
   printf("letters = ");
-  charArray_print(&letters, print_char);
+  charArray_print(&letters, print_char, stdout);
   printf("\n");
 
   charArray_forEach(&letters, uppercase_char);
 
   printf("after uppercase_char = ");
-  charArray_print(&letters, print_char);
+  charArray_print(&letters, print_char, stdout);
   printf("\n");
 
   charArray_free(&letters);
@@ -199,7 +209,7 @@ int main(void) {
   PersonArray_push(&people, (Person){.name = "Grace", .age = 85});
 
   printf("people = ");
-  PersonArray_print(&people, print_person);
+  PersonArray_print(&people, print_person, stdout);
   printf("\n");
 
   Person second_person;
@@ -207,7 +217,7 @@ int main(void) {
   printf("safe get person index 1: %s, ", arr_error_to_string(error));
 
   if (error == ARR_SUCCESS) {
-    print_person(second_person);
+    print_person(second_person, stdout);
   }
 
   printf("\n");
@@ -216,7 +226,7 @@ int main(void) {
   PersonArray_forEach(&people, birthday);
 
   printf("after set and birthday = ");
-  PersonArray_print(&people, print_person);
+  PersonArray_print(&people, print_person, stdout);
   printf("\n");
 
   PersonArray_free(&people);

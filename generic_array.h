@@ -8,15 +8,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifndef assert
+#include <assert.h>
+#endif
+
 /* Enumerators for possible array errors */
 typedef enum {
   ARR_SUCCESS = 0,   /* Success State for any Array Operation */
-  ARR_NOT_EMPTY,     /* Array was not empty when calling array_init() [Double
-                        Initialization] */
   ARR_OUT_OF_MEMORY, /* Any dynamic allocations were not able to be completed
                         (initial array or reallocations) */
-  ARR_IS_EMPTY, /* array_pop() or array_free() were called while Array was empty
-                 */
   ARR_INVALID_PARAM, /* Gave a NULL pointer to the out parameter in array_get()
                       */
   ARR_OUT_OF_BOUNDS  /* Out of bounds array access */
@@ -27,12 +27,8 @@ static inline const char *arr_error_to_string(arr_error error) {
   switch (error) {
   case ARR_SUCCESS:
     return "ARR_SUCCESS";
-  case ARR_NOT_EMPTY:
-    return "ARR_NOT_EMPTY";
   case ARR_OUT_OF_MEMORY:
     return "ARR_OUT_OF_MEMORY";
-  case ARR_IS_EMPTY:
-    return "ARR_IS_EMPTY";
   case ARR_OUT_OF_BOUNDS:
     return "ARR_OUT_OF_BOUNDS";
   default:
@@ -76,7 +72,7 @@ static inline const char *arr_error_to_string(arr_error error) {
 */
 #define ArrayMethod(type, method_name) type##Array_##method_name
 
-#define DeclArray(type)                                                                      \
+#define DefArray(type)                                                                      \
   typedef struct {                                                                           \
     type *data;                                                                              \
     size_t count;                                                                            \
@@ -101,8 +97,7 @@ static inline const char *arr_error_to_string(arr_error error) {
   */                                                                                         \
   static inline arr_error ArrayMethod(type, init)(Array(type) * self) {                      \
     /* Protection against double init (which causes a memory leak) */                        \
-    if (self->data != NULL)                                                                  \
-      return ARR_NOT_EMPTY;                                                                  \
+    assert(self->data == NULL);                                                               \
                                                                                              \
     /* Allocate necessary data for initial array capacity */                                 \
     type *data = (type *)malloc(INIT_CAPACITY * sizeof(type));                               \
@@ -177,13 +172,12 @@ static inline const char *arr_error_to_string(arr_error error) {
     intArray_push(&my_array, 10); // Pushes to array                                         \
     intArray_pop(&my_array); // Pops the introduced '10'                                     \
     ---                                                                                      \
-    Returns ARR_IS_EMPTY if called on an empty array.                                        \
+    Asserts that the array is not empty, program aborts otherwise                            \
                                                                                            \ \
     Returns ARR_SUCCESS otherwise.                                                           \
   */                                                                                         \
   static inline arr_error ArrayMethod(type, pop)(Array(type) * self) {                       \
-    if (self->count == 0)                                                                    \
-      return ARR_IS_EMPTY;                                                                   \
+    assert(self->count > 0);                                                                  \
     self->count--;                                                                           \
     return ARR_SUCCESS;                                                                      \
   }                                                                                          \
@@ -234,14 +228,14 @@ static inline const char *arr_error_to_string(arr_error error) {
     Receives a print function for easy printing                                              \
   */                                                                                         \
   static inline void ArrayMethod(type, print)(Array(type) * self,                            \
-                                              void (*f)(type)) {                             \
-    printf("[");                                                                             \
+                                              void (*f)(type, FILE*), FILE* stream) {        \
+    fputs("[", stream);                                                                             \
     for (size_t i = 0; i < self->count; i++) {                                               \
       if (i != 0)                                                                            \
-        printf(", ");                                                                        \
-      f(self->data[i]);                                                                      \
+        fputs(",", stream);                                                                        \
+      f(self->data[i], stream);                                                                      \
     }                                                                                        \
-    printf("]");                                                                             \
+    fputs("]", stream);                                                                             \
   }                                                                                          \
                                                                                              \
   /*                                                                                         \
@@ -265,16 +259,14 @@ static inline const char *arr_error_to_string(arr_error error) {
     ---                                                                                      \
     Gets an element from the array (with bounds-checking)                                    \
     ---                                                                                      \
+    If out is NULL the program will panic!                                                   \
     Returns ARR_OUT_OF_BOUNDS if the provided index doesn't exist                            \
-                                                                                           \ \
-    Returns ARR_INVALID_PARAM if out is NULL                                                 \
                                                                                            \ \
     Returns ARR_SUCCESS otherwise (and fills *out with the obtained value)                   \
   */                                                                                         \
   static inline arr_error ArrayMethod(type, get)(Array(type) * self,                         \
                                                  size_t index, type *out) {                  \
-    if (out == NULL)                                                                         \
-      return ARR_INVALID_PARAM;                                                              \
+    assert(out != NULL);                                                                      \
     arr_error exists = ArrayMethod(type, exists)(self, index);                               \
     if (exists == ARR_SUCCESS)                                                               \
       *out = self->data[index];                                                              \
@@ -359,8 +351,7 @@ static inline const char *arr_error_to_string(arr_error error) {
     array_clear), also sets count and capacity to 0. Any freed array can be                  \
     reinitialized with array_init                                                            \
     ---                                                                                      \
-    Returns ARR_IS_EMPTY if the given array's data is NULL. (will still set                  \
-    count and capacity to 0)                                                                 \
+    panics if the given array's data is NULL.                                                                  \
                                                                                            \ \
     Returns ARR_SUCCESS otherwise                                                            \
   */                                                                                         \
@@ -368,8 +359,7 @@ static inline const char *arr_error_to_string(arr_error error) {
     self->capacity = 0;                                                                      \
     self->count = 0;                                                                         \
                                                                                              \
-    if (self->data == NULL)                                                                  \
-      return ARR_IS_EMPTY;                                                                   \
+    assert(self->data != NULL);                                                              \
     free(self->data);                                                                        \
     self->data = NULL;                                                                       \
     return ARR_SUCCESS;                                                                      \
@@ -379,9 +369,9 @@ static inline const char *arr_error_to_string(arr_error error) {
 
 #ifndef GENERIC_ARRAY_DISABLE_DEFAULTS
 /* Default commonly used array types */
-DeclArray(int);
-DeclArray(double);
-DeclArray(char);
+DefArray(int);
+DefArray(double);
+DefArray(char);
 #endif /* DISABLE_DEFAULTS*/
 
 #endif /* GENERIC_ARRAY_H */
